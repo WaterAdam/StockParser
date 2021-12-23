@@ -5,6 +5,7 @@ create table stock(
    industry INT,
    PRIMARY KEY ( sid )
 );
+ALTER TABLE stock ADD Capital DECIMAL(16,2) NOT NULL SET DEFAULT 0.1 -- 新增加資本額欄位
 
 -- 存放產業類別資訊
 create table industry(
