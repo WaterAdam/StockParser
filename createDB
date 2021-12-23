@@ -1,0 +1,39 @@
+-- 存放股號以及產業類別
+create table stock(
+   sid INT NOT NULL,
+   name VARCHAR(100) NOT NULL,
+   industry INT,
+   PRIMARY KEY ( sid )
+);
+
+-- 存放產業類別資訊
+create table industry(
+   id INT NOT NULL,
+   name VARCHAR(100) NOT NULL,
+   PRIMARY KEY ( id )
+);
+
+-- 存放每日搜集的data
+create table stock_daily_info(
+   lid INT NOT NULL AUTO_INCREMENT,
+   sid INT NOT NULL,
+   Open DECIMAL(8,2) NOT NULL,
+   Close DECIMAL(8,2) NOT NULL,
+   Volume INT NOT NULL,
+   ChangePrice DECIMAL(8,2) NOT NULL,-- 漲跌價
+   ChangePercent DECIMAL(8,2) NOT NULL,-- 漲跌幅
+   High DECIMAL(8,2) NOT NULL,
+   Low DECIMAL(8,2) NOT NULL,
+   AvgPrice DECIMAL(8,2) NOT NULL,
+   PreviousPrice DECIMAL(8,2) NOT NULL,
+   -- Revenue DECIMAL(8,2) NOT NULL,
+   ForeignInvVol DECIMAL(10,0) NOT NULL,
+   InvVol DECIMAL(10,0) NOT NULL,
+   ForeignTradePercent DECIMAL(5,3) NOT NULL, -- 外資比重
+   InvTradePercent DECIMAL(5,3) NOT NULL,-- 投信比重
+   -- RegCapital INT NOT NULL, -- 資本額
+   AvgVol5 DECIMAL(16,2) NOT NULL,-- 5均量
+   AvgVol20 DECIMAL(16,2) NOT NULL,-- 20均量
+   date DATE NOT NULL,
+   PRIMARY KEY ( lid )
+);
