@@ -9,6 +9,8 @@ import SQL
 FIdata = "https://www.twse.com.tw/fund/T86?response=json&date=%s&selectType=ALLBUT0999"
 DTdata = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
 
+# 查詢資本額
+capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
 # 確認stock_daily_info已存在最新data
 check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by lid desc limit 1"
 # 新增資料SQL語法
@@ -39,7 +41,7 @@ def twseFI(_url):
     df = pandas.DataFrame.from_dict(inv_json['data'])
     return df
 
-def process(datadate):
+def process(datadate, checkdata):
     print('process date is %s' % datadate)
     csvList = []
 
@@ -60,8 +62,11 @@ def process(datadate):
 
     # inner join DTlist & FIlist by sid
     result = pandas.merge(DTlist, FIlist, on=['sid'], how='right')
-    # result.to_csv('tmp.csv')
     print(len(result))
+
+    if checkdata == 1 :
+        result.to_csv('twse' + datadate.strftime("%Y-%m-%d") + '.csv')
+        return False
 
     for index, row in result.iterrows():
         try:
@@ -78,8 +83,9 @@ def process(datadate):
             InvVol = int(int(row['InvVol'].replace(',', '')) / 1000)
 
             # 計算方式：買超張數 / 股本（億） / 10000 * 100% = xx( %)
-            # Fpercent = FVol / RegCapital / 100
-            # Ipercent = InvVol / RegCapital / 100
+            capital =  SQL.Query_command(capital_query, row['sid'])
+            Fpercent = FVol / capital[0][1] / 100
+            Ipercent = InvVol / capital[0][1] / 100
 
             # get average infomation
             query_latest19 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 19"
@@ -101,8 +107,8 @@ def process(datadate):
                 row['close'] - row['change'],   # pre price
                 FVol,                           # F Volume
                 InvVol,                         # I Volume
-                0,                              # 外資成交佔比
-                0,                              # 投信成交占比
+                Fpercent,                       # 外資成交佔比
+                Ipercent,                       # 投信成交占比
                 avg5,                           # avg volume 5
                 avg20,                          # avg volume 20
                 datadate.strftime("%Y-%m-%d")
@@ -139,7 +145,7 @@ def process(datadate):
 
     print('fail collect stocks:')
     print(csvList)
-    makeCSV(os.path.join(os.getcwd(), "loss/") + date.today().strftime("%Y%m%d") + ".csv", csvList)
+    makeCSV(os.path.join(os.getcwd(), "loss/twse") + datadate.strftime("%Y%m%d") + ".csv", csvList)
 
 def avg_volume(list, vol):
     cnt = vol

@@ -56,8 +56,11 @@ if __name__ == '__main__':
         datadate = datetime.date.today() - datetime.timedelta(days=1)
 
     # 證交所 - 上市
-    twse.process(datadate)
+    # 1 = only check data
+    # 0 = insert data in stock_daily_info
+    checkdata = 0
+    twse.process(datadate, checkdata)
     # 櫃買中心 - 上櫃
-    # tpex.process(datadate)
+    # tpex.process(datadate, 1)
 
 
