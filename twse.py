@@ -42,7 +42,7 @@ def twseFI(_url):
     return df
 
 def process(datadate, checkdata):
-    print('process date is %s' % datadate)
+    print('TWSE process date is %s' % datadate)
     csvList = []
 
     try:
@@ -51,7 +51,7 @@ def process(datadate, checkdata):
         FIlist.columns = ['sid', 'name_fi', 'f2', 'f3', 'FVol', 'f5', 'f6', 'f7', 'f8', 'f9', 'InvVol', 'f11', 'f12', 'f13', 'f14', 'f15', 'f16', 'f17', 'f18']
 
         # get daily trading data
-        path = os.path.join(os.getcwd(), "DTdata/") + datadate.strftime("%Y%m%d") + ".csv"
+        path = os.path.join(os.getcwd(), "DTdata/twse_") + datadate.strftime("%Y%m%d") + ".csv"
         downloadCSV(DTdata, path)
         DTlist = pandas.read_csv(path)
         DTlist.columns = ['sid', 'name', 'volume', 'money', 'open', 'high', 'low', 'close', 'change', 'total']
@@ -64,7 +64,7 @@ def process(datadate, checkdata):
     result = pandas.merge(DTlist, FIlist, on=['sid'], how='right')
     print(len(result))
 
-    if checkdata == 1 :
+    if checkdata == '1':
         result.to_csv('twse' + datadate.strftime("%Y-%m-%d") + '.csv')
         return False
 

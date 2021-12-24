@@ -5,10 +5,13 @@ import requests
 import urllib.request
 import pandas
 import SQL
+from bs4 import BeautifulSoup
 
-FIdata = "https://www.twse.com.tw/fund/T86?response=json&date=%s&selectType=ALLBUT0999"
-DTdata = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
+FIdata = "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=htm&se=EW&t=D&d=%s&s=0,asc"
+DTdata = "https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&o=htm&d=%s&se=EW&s=0,asc,0"
 
+# 查詢資本額
+capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
 # 確認stock_daily_info已存在最新data
 check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by lid desc limit 1"
 # 新增資料SQL語法
@@ -32,28 +35,45 @@ def downloadCSV(_url, _path):
     print(_url)
     urllib.request.urlretrieve(_url, _path)
 
-def twseFI(_url):
+def getTableRow(table, head, end = None):
+    trs = table.find_all('tr')[head:end]
+    rows = list()
+    for tr in trs:
+        rows.append([td.text.replace('\n', '').replace('\xa0', '') for td in tr.find_all('td')])
+
+    return rows
+
+def tpexParser(_url):
     print(_url)
     rsp = requests.get(_url)
-    inv_json = rsp.json()
-    df = pandas.DataFrame.from_dict(inv_json['data'])
+    rsp.encoding = 'UTF-8'
+    soup = BeautifulSoup(rsp.text, "lxml")  # 指定 lxml 作為解析器
+    table1 = soup.find('table')
+    table1rows = getTableRow(table1, 3, -1)
+    df = pandas.DataFrame.from_dict(table1rows)
+
     return df
 
+def ROCdate(datadate):
+    y, m, d = datadate.strftime("%Y-%m-%d").split('-')
+    return str(int(y) - 1911) + '/' + m + '/' + d
 
-def process(datadate):
-    print('process date is %s' % datadate)
+def process(datadate, checkdata):
+    print('TPEX process date is %s' % datadate)
     csvList = []
 
+    ROCtime = ROCdate(datadate)
+    print(ROCtime)
     try:
         # get daily FI trading data
-        FIlist = twseFI(FIdata % datadate.strftime("%Y%m%d"))
-        FIlist.columns = ['sid', 'name_fi', 'f2', 'f3', 'FVol', 'f5', 'f6', 'f7', 'f8', 'f9', 'InvVol', 'f11', 'f12', 'f13', 'f14', 'f15', 'f16', 'f17', 'f18']
+        FIlist = tpexParser(FIdata % ROCtime)
+        FIlist.columns = ['sid', 'name_fi', 'f2', 'f3', 'FVol', 'f5', 'f6', 'f7', 'f8', 'f9', 'F10', 'f11', 'f12', 'InvVol', 'f14', 'f15', 'f16', 'f17', 'f18', 'f19', 'f20', 'f21', 'f22', 'f23']
+        # print(FIlist)
 
         # get daily trading data
-        path = os.path.join(os.getcwd(), "DTdata/") + date.today().strftime("%Y%m%d") + ".csv"
-        downloadCSV(DTdata, path)
-        DTlist = pandas.read_csv(path)
-        DTlist.columns = ['sid', 'name', 'volume', 'money', 'open', 'high', 'low', 'close', 'change', 'total']
+        DTlist = tpexParser(DTdata % ROCtime)
+        DTlist.columns = ['sid', 'name', 'close', 'change', 'open', 'high', 'low', 'volume', 'money', 'total', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
+        # print(DTlist)
     except Exception as ex:
         print(ex)
         print('get data fail')
@@ -61,8 +81,11 @@ def process(datadate):
 
     # inner join DTlist & FIlist by sid
     result = pandas.merge(DTlist, FIlist, on=['sid'], how='right')
-    # result.to_csv('tmp.csv')
     print(len(result))
+
+    if checkdata == '1':
+        result.to_csv('tpex' + datadate.strftime("%Y-%m-%d") + '.csv')
+        return False
 
     for index, row in result.iterrows():
         try:
@@ -73,14 +96,18 @@ def process(datadate):
 
             # pre calculate
             sid = int(row['sid'])
-            volume = int(int(row['volume']) / 1000)
-            changeP = round(row['change'] / (row['close'] - row['change']) * 100, 2)
+            volume = int(int(row['volume'].replace(',', '')) / 1000)
+            close = float(row['close'].replace(',', ''))
+            change = float(row['change'])
+            changeP = round(change / (close - change) * 100, 2)
             FVol = int(int(row['FVol'].replace(',', '')) / 1000)
             InvVol = int(int(row['InvVol'].replace(',', '')) / 1000)
+            avgPrice = int(row['money'].replace(',', '')) / volume / 1000
 
             # 計算方式：買超張數 / 股本（億） / 10000 * 100% = xx( %)
-            # Fpercent = FVol / RegCapital / 100
-            # Ipercent = InvVol / RegCapital / 100
+            capital = SQL.Query_command(capital_query, row['sid'])
+            Fpercent = FVol / capital[0][1] / 100
+            Ipercent = InvVol / capital[0][1] / 100
 
             # get average infomation
             query_latest19 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 19"
@@ -91,19 +118,19 @@ def process(datadate):
 
             data = [
                 sid,
-                row['open'],                    # open
-                row['close'],                   # close
+                row['open'].replace(',', ''),   # open
+                row['close'].replace(',', ''),  # close
                 volume,                         # Volume
                 row['change'],                  # change
                 changeP,                        # change %
-                row['high'],                    # high
-                row['low'],                     # low
-                row['money'] / row['volume'],   # avg price
-                row['close'] - row['change'],   # pre price
+                row['high'].replace(',', ''),   # high
+                row['low'].replace(',', ''),    # low
+                avgPrice,                       # avg price
+                round(close - change, 2),       # pre price
                 FVol,                           # F Volume
                 InvVol,                         # I Volume
-                0,                              # 外資成交佔比
-                0,                              # 投信成交占比
+                Fpercent,                       # 外資成交佔比
+                Ipercent,                       # 投信成交占比
                 avg5,                           # avg volume 5
                 avg20,                          # avg volume 20
                 datadate.strftime("%Y-%m-%d")
@@ -140,7 +167,7 @@ def process(datadate):
 
     print('fail collect stocks:')
     print(csvList)
-    makeCSV(os.path.join(os.getcwd(), "loss/") + date.today().strftime("%Y%m%d") + ".csv", csvList)
+    makeCSV(os.path.join(os.getcwd(), "loss/tpex") + datadate.strftime("%Y%m%d") + ".csv", csvList)
 
 def avg_volume(list, vol):
     cnt = vol
