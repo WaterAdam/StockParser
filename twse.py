@@ -15,6 +15,8 @@ capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
 check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by lid desc limit 1"
 # 新增資料SQL語法
 insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+# 更新資料SQL語法
+update = "UPDATE stock_daily_info set Open =  = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s where date = %s and sid = %s"
 
 def makeCSV(path, csvList):
     # 開啟 CSV 檔案
