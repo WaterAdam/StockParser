@@ -1,10 +1,11 @@
-from datetime import date, datetime
+from datetime import datetime
 import csv
 import os.path
 import requests
 import urllib.request
 import pandas
 import SQL
+import numpy as np
 from bs4 import BeautifulSoup
 
 FIdata = "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=htm&se=EW&t=D&d=%s&s=0,asc"
