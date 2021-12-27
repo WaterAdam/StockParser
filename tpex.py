@@ -17,7 +17,7 @@ check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order 
 # 新增資料SQL語法
 insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 # 更新資料SQL語法
-update = "UPDATE stock_daily_info set Open =  = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s where date = %s and sid = %s"
+update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s where date = %s and sid = %s"
 
 def makeCSV(path, csvList):
     # 開啟 CSV 檔案
@@ -155,7 +155,14 @@ def process(datadate, checkdata):
             else:
                 # update stock_daily_info
                 if (latest[0][1] == date_url):
-                    print("to do update")
+                    # shift data for update data format
+                    data_update = np.roll(data, -1)
+                    data_update = tuple(data_update)
+                    rsp = SQL.Update_stock_daily_info(update, data_update)
+                    if rsp > 0:
+                        csvList.append([sid])
+                    else:
+                        print('update ' + str(sid) + ' OK')
                 else:
                     # insert stock_daily_info
                     rsp = SQL.Insert_stock_daily_info(insert, data)
