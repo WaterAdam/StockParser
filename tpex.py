@@ -179,6 +179,7 @@ def process(datadate, checkdata):
     print('fail collect stocks:')
     print(csvList)
     makeCSV(os.path.join(os.getcwd(), "loss/tpex") + datadate.strftime("%Y%m%d") + ".csv", csvList)
+    return os.path.join(os.getcwd(), "loss/tpex") + datadate.strftime("%Y%m%d") + ".csv", csvList
 
 def avg_volume(list, vol):
     cnt = vol

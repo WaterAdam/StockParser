@@ -2,14 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hello Page</title>
+    <title>Hello</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 
     <script>
+        check_twse = false;
+        check_tpex = false;
+
         $( document ).ready(function() {
+            // check twse or tpex data
             $(".check-data").click(function(){
                 act = this.id;
-                label = (act == "checkTWSE") ? "上市當日收盤" : "上櫃當日收盤";
+                label = (act == "checkTWSE") ? "上市收盤" : "上櫃收盤";
                 $.ajax({
                     type: 'POST',
                     url: '/check',
@@ -19,7 +23,37 @@
                     success: function(rep){
                         $("#table_list").find(".dataframe").remove();
                         $("#table_list").append(rep.data);
-                        $("#display_type").html(label);
+                        $("#display_title").html(rep.date + label);
+
+                        if (act == 'checkTWSE') {
+                            check_twse = true;
+                        }
+                        if (act == 'checkTPEX') {
+                            check_tpex = true;
+                        }
+                        if (check_twse && check_tpex) {
+                            $('#insert').removeAttr('disabled');
+                        }
+                    },
+                    error:function(xhr, ajaxOptions, thrownError){
+                        alert(thrownError);
+                    }
+                  });
+            });
+
+            // insert daily data
+            $(".insert-data").click(function(){
+                $.ajax({
+                    type: 'POST',
+                    url: '/insert',
+                    data: {'act': this.id},
+                    dataType: "json",
+
+                    success: function(rep){
+                        console.log(rep)
+                        $("#table_list").find(".dataframe").remove();
+                        $("#table_list").append(rep.data);
+                        $("#display_title").html(rep.date + ' 收盤');
                     },
                     error:function(xhr, ajaxOptions, thrownError){
                         alert(thrownError);
@@ -40,12 +74,12 @@
 
     <h2>2. 寫入data</h2>
         <div>
-            <button id="insert" type="button" class='btn btn-default'>寫入DB</button>
+            <button id="insert" type="button" class='btn btn-default insert-data' disabled>寫入DB</button>
         </div>
     <h2>3. 查看data</h2>
 
     <hr size="1px" align="center" width="100%">
-        <div><h3>資料檢查：</h3><label id="display_type"></label></div>
+        <div><h3>資料檢查：</h3><label id="display_title"></label></div>
     <div id="table_list">
 
     </div>
