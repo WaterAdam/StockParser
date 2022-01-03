@@ -68,8 +68,9 @@ def process(datadate, checkdata):
     print(len(result))
 
     if checkdata == '1':
-        result.to_csv('twse' + datadate.strftime("%Y-%m-%d") + '.csv')
-        return False
+        File_Name = 'twse' + datadate.strftime("%Y-%m-%d") + '.csv'
+        result.to_csv(File_Name)
+        return File_Name
 
     for index, row in result.iterrows():
         try:

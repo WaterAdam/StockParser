@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello Page</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <script>
+        $( document ).ready(function() {
+            $(".check-data").click(function(){
+                act = this.id;
+                label = (act == "checkTWSE") ? "上市當日收盤" : "上櫃當日收盤";
+                $.ajax({
+                    type: 'POST',
+                    url: '/check',
+                    data: {'act': act},
+                    dataType: "json",
+
+                    success: function(rep){
+                        $("#table_list").find(".dataframe").remove();
+                        $("#table_list").append(rep.data);
+                        $("#display_type").html(label);
+                    },
+                    error:function(xhr, ajaxOptions, thrownError){
+                        alert(thrownError);
+                    }
+                  });
+            });
+        });
+
+    </script>
+</head>
+<body>
+    <div class='container'>
+    <h2>1. 先檢查data是否是當日的</h2>
+        <div>
+            <button id="checkTWSE" type="button" class='btn btn-default check-data'>檢查上市File</button>
+            <button id="checkTPEX" type="button" class='btn btn-default check-data'>檢查上櫃File</button>
+        </div>
+
+    <h2>2. 寫入data</h2>
+        <div>
+            <button id="insert" type="button" class='btn btn-default'>寫入DB</button>
+        </div>
+    <h2>3. 查看data</h2>
+
+    <hr size="1px" align="center" width="100%">
+        <div><h3>資料檢查：</h3><label id="display_type"></label></div>
+    <div id="table_list">
+
+    </div>
+</body>
+</html>

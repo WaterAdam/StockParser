@@ -1,0 +1,18 @@
+# 1. 查詢日期重複data, 並取得sid list
+select count(lid), sid, date from stock_daily_info
+where date = '2021-12-22'
+GROUP by sid, date
+HAVING count(lid) > 1
+ORDER by sid asc
+
+# 2. 使用sid list反查重複的lid list
+select * from stock_daily_info where lid in (
+(select max(lid) from stock_daily_info where date = '2021-12-17' and sid = 1336),
+(select max(lid) from stock_daily_info where date = '2021-12-17' and sid = 1565),
+(select max(lid) from stock_daily_info where date = '2021-12-17' and sid = 1569),
+(select max(lid) from stock_daily_info where date = '2021-12-17' and sid = 1570)
+)
+
+# 移除重複的data by lid list
+DELETE from stock_daily_info
+where lid in ('4407','4408','4409','4410','4411','4412','4413')
