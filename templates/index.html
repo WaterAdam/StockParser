@@ -60,28 +60,52 @@
                     }
                   });
             });
+
+            // display rank data
+            $(".rank-data").click(function(){
+                $.ajax({
+                    type: 'POST',
+                    url: '/raw_data_rank',
+                    data: {'act': this.id},
+                    dataType: "json",
+
+                    success: function(rep){
+                        console.log(rep)
+                        $("#table_list").find(".dataframe").remove();
+                        $("#table_list").append(rep.data);
+                        $("#display_title").html(rep.date + ' 收盤');
+                    },
+                    error:function(xhr, ajaxOptions, thrownError){
+                        alert(thrownError);
+                    }
+                  });
+            });
         });
 
     </script>
 </head>
 <body>
     <div class='container'>
-    <h2>1. 先檢查data是否是當日的</h2>
-        <div>
-            <button id="checkTWSE" type="button" class='btn btn-default check-data'>檢查上市File</button>
-            <button id="checkTPEX" type="button" class='btn btn-default check-data'>檢查上櫃File</button>
+        <h2>1. 先檢查data是否是當日的</h2>
+            <div>
+                <button id="checkTWSE" type="button" class='btn btn-default check-data'>檢查上市File</button>
+                <button id="checkTPEX" type="button" class='btn btn-default check-data'>檢查上櫃File</button>
+            </div>
+
+        <h2>2. 寫入data</h2>
+            <div>
+                <button id="insert" type="button" class='btn btn-default insert-data' disabled>寫入DB</button>
+            </div>
+        <h2>3. 查看data</h2>
+            <div>
+                <button id="raw_rank" type="button" class='btn btn-default rank-data'>每日排名</button>
+            </div>
+
+        <hr size="1px" align="center" width="100%">
+            <div><h3>資料檢查：</h3><label id="display_title"></label></div>
+        <div id="table_list">
+
         </div>
-
-    <h2>2. 寫入data</h2>
-        <div>
-            <button id="insert" type="button" class='btn btn-default insert-data' disabled>寫入DB</button>
-        </div>
-    <h2>3. 查看data</h2>
-
-    <hr size="1px" align="center" width="100%">
-        <div><h3>資料檢查：</h3><label id="display_title"></label></div>
-    <div id="table_list">
-
     </div>
 </body>
 </html>
