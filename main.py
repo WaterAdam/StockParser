@@ -1,11 +1,10 @@
 import time
-import sys
 import SQL
 import twse
 import tpex
 import datetime
 import pandas as pd
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template
 
 mytime = time.localtime()
 if mytime.tm_hour > 15:
@@ -73,8 +72,6 @@ def raw_data_rank():
             tmp = pd.DataFrame(data, columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量'])
             df = df.append(tmp)
 
-        # df = df.set_index('股號')
-        # df.reset_index(drop=True, inplace=True)
         html_file = df.to_html()
     return {'data':html_file, 'date':datadate.strftime("%Y-%m-%d")}
 
