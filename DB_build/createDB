@@ -38,3 +38,4 @@ create table stock_daily_info(
    date DATE NOT NULL,
    PRIMARY KEY ( lid )
 );
+ALTER TABLE stock_daily_info ADD COLUMN per DECIMAL(8,2) DEFAULT 0;

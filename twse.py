@@ -1,14 +1,13 @@
-from datetime import datetime
 import csv
 import os.path
 import requests
 import urllib.request
 import pandas
 import SQL
-import numpy as np
 
 FIdata = "https://www.twse.com.tw/fund/T86?response=json&date=%s&selectType=ALLBUT0999"
 DTdata = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
+DTdata = "https://www.twse.com.tw/exchangeReport/MI_INDEX?response=html&date=%s&type=ALLBUT0999"
 
 # 查詢資本額
 capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
@@ -17,7 +16,7 @@ check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order 
 # 新增資料SQL語法
 insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 # 更新資料SQL語法
-update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s where date = %s and sid = %s"
+update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s, per = %s where date = %s and sid = %s"
 
 def makeCSV(path, csvList):
     # 開啟 CSV 檔案
@@ -44,6 +43,13 @@ def twseFI(_url):
     df = pandas.DataFrame.from_dict(inv_json['data'])
     return df
 
+def twseDT(_url):
+    print(_url)
+    table_MN = pandas.read_html(_url)
+    df = table_MN[-1]
+
+    return df
+
 def process(datadate, checkdata):
     print('TWSE process date is %s' % datadate)
     csvList = []
@@ -53,11 +59,8 @@ def process(datadate, checkdata):
         FIlist = twseFI(FIdata % datadate.strftime("%Y%m%d"))
         FIlist.columns = ['sid', 'name_fi', 'f2', 'f3', 'FVol', 'f5', 'f6', 'f7', 'f8', 'f9', 'InvVol', 'f11', 'f12', 'f13', 'f14', 'f15', 'f16', 'f17', 'f18']
 
-        # get daily trading data
-        path = os.path.join(os.getcwd(), "DTdata/twse_") + datadate.strftime("%Y%m%d") + ".csv"
-        downloadCSV(DTdata, path)
-        DTlist = pandas.read_csv(path)
-        DTlist.columns = ['sid', 'name', 'volume', 'money', 'open', 'high', 'low', 'close', 'change', 'total']
+        DTlist = twseDT(DTdata % datadate.strftime("%Y%m%d"))
+        DTlist.columns = ['sid', 'name', 'volume', 'd3', 'money', 'open', 'high', 'low', 'close', 'pom', 'change', 'd10', 'd11', 'd12', 'd13', 'per']
     except Exception as ex:
         print(ex)
         print('get data fail')
@@ -81,8 +84,17 @@ def process(datadate, checkdata):
 
             # pre calculate
             sid = int(row['sid'])
+            close = float(row['close'])
             volume = int(int(row['volume']) / 1000)
-            changeP = round(row['change'] / (row['close'] - row['change']) * 100, 2)
+            if row['pom'] == '+':
+                change = float(row['change'])
+                changeP = round(change / (close - change) * 100, 2)
+            elif row['pom'] == '-':
+                change = float(row['change']) * -1
+                changeP = round(change / (close - change) * 100, 2)
+            else:
+                change = 0
+                changeP = 0
             FVol = int(int(row['FVol'].replace(',', '')) / 1000)
             InvVol = int(int(row['InvVol'].replace(',', '')) / 1000)
 
@@ -92,37 +104,36 @@ def process(datadate, checkdata):
             Ipercent = InvVol / capital[0][1] / 100
 
             # get average infomation
-            query_latest19 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 19"
-            latest19 = SQL.Query_command(query_latest19, row['sid'])
-            latest4 = latest19[0:4]
+            query_latest20 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 20"
+            latest20 = SQL.Query_command(query_latest20, row['sid'])
+            latest19 = latest20[0:19]
+            latest4 = latest20[0:4]
             avg20 = avg_volume(latest19, volume)
             avg5 = avg_volume(latest4, volume)
 
             data = [
                 sid,
                 row['open'],                    # open
-                row['close'],                   # close
+                close,                          # close
                 volume,                         # Volume
-                row['change'],                  # change
+                change,                         # change
                 changeP,                        # change %
                 row['high'],                    # high
                 row['low'],                     # low
                 row['money'] / row['volume'],   # avg price
-                row['close'] - row['change'],   # pre price
+                close - change,                 # pre price
                 FVol,                           # F Volume
                 InvVol,                         # I Volume
                 Fpercent,                       # 外資成交佔比
                 Ipercent,                       # 投信成交占比
                 avg5,                           # avg volume 5
                 avg20,                          # avg volume 20
-                datadate.strftime("%Y-%m-%d")
+                datadate.strftime("%Y-%m-%d"),
+                row['per']                      # PE ratio
             ]
 
             # check latest data in DB
             latest = SQL.Query_command(check_data_exist, sid)
-
-            # trans string to datetime
-            date_url = datetime.strptime(data[-1], "%Y-%m-%d").date()
 
             # if no stock data in db
             if len(latest) == 0:
@@ -134,10 +145,33 @@ def process(datadate, checkdata):
                     print(str(sid) + ' OK')
             else:
                 # update stock_daily_info
-                if (latest[0][1] == date_url):
-                    # shift data for update data format
-                    data_update = np.roll(data, -1)
-                    data_update = tuple(data_update)
+                if (latest[0][1] == datadate):
+                    latest19 = latest20[1:20]
+                    latest4 = latest20[1:5]
+                    avg20 = avg_volume(latest19, volume)
+                    avg5 = avg_volume(latest4, volume)
+
+                    data = [
+                        row['open'],  # open
+                        close,  # close
+                        volume,  # Volume
+                        change,  # change
+                        changeP,  # change %
+                        row['high'],  # high
+                        row['low'],  # low
+                        row['money'] / row['volume'],  # avg price
+                        close - change,  # pre price
+                        FVol,  # F Volume
+                        InvVol,  # I Volume
+                        Fpercent,  # 外資成交佔比
+                        Ipercent,  # 投信成交占比
+                        avg5,  # avg volume 5
+                        avg20,  # avg volume 20
+                        row['per'],  # PE ratio
+                        datadate.strftime("%Y-%m-%d"),
+                        sid
+                    ]
+                    data_update = tuple(data)
                     rsp = SQL.Update_stock_daily_info(update, data_update)
                     if rsp > 0:
                         csvList.append([sid])

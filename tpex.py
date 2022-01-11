@@ -1,11 +1,9 @@
-from datetime import datetime
 import csv
 import os.path
 import requests
 import urllib.request
 import pandas
 import SQL
-import numpy as np
 from bs4 import BeautifulSoup
 
 FIdata = "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=htm&se=EW&t=D&d=%s&s=0,asc"
@@ -18,7 +16,7 @@ check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order 
 # 新增資料SQL語法
 insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 # 更新資料SQL語法
-update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s where date = %s and sid = %s"
+update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s, per = %s where date = %s and sid = %s"
 
 def makeCSV(path, csvList):
     # 開啟 CSV 檔案
@@ -114,9 +112,10 @@ def process(datadate, checkdata):
             Ipercent = InvVol / capital[0][1] / 100
 
             # get average infomation
-            query_latest19 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 19"
-            latest19 = SQL.Query_command(query_latest19, row['sid'])
-            latest4 = latest19[0:4]
+            query_latest20 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 20"
+            latest20 = SQL.Query_command(query_latest20, row['sid'])
+            latest19 = latest20[0:19]
+            latest4 = latest20[0:4]
             avg20 = avg_volume(latest19, volume)
             avg5 = avg_volume(latest4, volume)
 
@@ -137,14 +136,12 @@ def process(datadate, checkdata):
                 Ipercent,                       # 投信成交占比
                 avg5,                           # avg volume 5
                 avg20,                          # avg volume 20
-                datadate.strftime("%Y-%m-%d")
+                datadate.strftime("%Y-%m-%d"),
+                0
             ]
 
             # check latest data in DB
             latest = SQL.Query_command(check_data_exist, sid)
-
-            # trans string to datetime
-            date_url = datetime.strptime(data[-1], "%Y-%m-%d").date()
 
             # if no stock data in db
             if len(latest) == 0:
@@ -156,10 +153,34 @@ def process(datadate, checkdata):
                     print(str(sid) + ' OK')
             else:
                 # update stock_daily_info
-                if (latest[0][1] == date_url):
-                    # shift data for update data format
-                    data_update = np.roll(data, -1)
-                    data_update = tuple(data_update)
+                if (latest[0][1] == datadate):
+                    latest19 = latest20[1:20]
+                    latest4 = latest20[1:5]
+                    avg20 = avg_volume(latest19, volume)
+                    avg5 = avg_volume(latest4, volume)
+
+                    data = [
+                        row['open'].replace(',', ''),  # open
+                        row['close'].replace(',', ''),  # close
+                        volume,  # Volume
+                        row['change'],  # change
+                        changeP,  # change %
+                        row['high'].replace(',', ''),  # high
+                        row['low'].replace(',', ''),  # low
+                        avgPrice,  # avg price
+                        round(close - change, 2),  # pre price
+                        FVol,  # F Volume
+                        InvVol,  # I Volume
+                        Fpercent,  # 外資成交佔比
+                        Ipercent,  # 投信成交占比
+                        avg5,  # avg volume 5
+                        avg20,  # avg volume 20
+                        0,
+                        datadate.strftime("%Y-%m-%d"),
+                        sid,
+                    ]
+
+                    data_update = tuple(data)
                     rsp = SQL.Update_stock_daily_info(update, data_update)
                     if rsp > 0:
                         csvList.append([sid])
