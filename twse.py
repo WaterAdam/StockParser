@@ -6,13 +6,12 @@ import pandas
 import SQL
 
 FIdata = "https://www.twse.com.tw/fund/T86?response=json&date=%s&selectType=ALLBUT0999"
-DTdata = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL?response=open_data"
 DTdata = "https://www.twse.com.tw/exchangeReport/MI_INDEX?response=html&date=%s&type=ALLBUT0999"
 
 # 查詢資本額
 capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
 # 確認stock_daily_info已存在最新data
-check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by lid desc limit 1"
+check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by date desc limit 1"
 # 新增資料SQL語法
 insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 # 更新資料SQL語法
