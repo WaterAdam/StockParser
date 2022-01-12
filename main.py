@@ -110,9 +110,10 @@ def insert_with_interval():
     return {'done':done_date, 'fail':fail_date}
 
 if __name__ == '__main__':
-    # for debug test
-    # datadate = getNowTime()
+    # # for debug test
+    # # datadate = getNowTime()
+    # datadate = datetime.date(2021, 1, 5)
     # twse.process(datadate, '0')
 
-    app.debug = True
+    # app.debug = True
     app.run()

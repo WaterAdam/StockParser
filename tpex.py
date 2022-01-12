@@ -12,9 +12,9 @@ DTdata = "https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_w
 # 查詢資本額
 capital_query = "SELECT sid, Capital FROM stock where sid = %s limit 1"
 # 確認stock_daily_info已存在最新data
-check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s order by date desc limit 1"
+check_data_exist = "SELECT sid, date FROM stock_daily_info where sid = %s and date = %s limit 1"
 # 新增資料SQL語法
-insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+insert = "INSERT INTO stock_daily_info(sid, Open, Close, Volume, ChangePrice, ChangePercent, High, Low, AvgPrice, PreviousPrice, ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, AvgVol5, AvgVol20, date, per) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 # 更新資料SQL語法
 update = "UPDATE stock_daily_info set Open = %s, Close = %s, Volume = %s, ChangePrice = %s, ChangePercent = %s, High = %s, Low = %s, AvgPrice = %s, PreviousPrice = %s, ForeignInvVol = %s, InvVol = %s, ForeignTradePercent = %s, InvTradePercent = %s, AvgVol5 = %s, AvgVol20 = %s, per = %s where date = %s and sid = %s"
 
@@ -112,8 +112,8 @@ def process(datadate, checkdata):
             Ipercent = InvVol / capital[0][1] / 100
 
             # get average infomation
-            query_latest20 = "SELECT Volume FROM stock_daily_info where sid = %s order by lid desc limit 20"
-            latest20 = SQL.Query_command(query_latest20, row['sid'])
+            query_latest20 = "SELECT Volume FROM stock_daily_info where sid = %s and date <= %s order by date desc limit 20"
+            latest20 = SQL.Query_command(query_latest20, (row['sid'], datadate))
             latest19 = latest20[0:19]
             latest4 = latest20[0:4]
             avg20 = avg_volume(latest19, volume)
@@ -141,10 +141,10 @@ def process(datadate, checkdata):
             ]
 
             # check latest data in DB
-            latest = SQL.Query_command(check_data_exist, sid)
+            exist_data = SQL.Query_command(check_data_exist, (sid, datadate))
 
             # if no stock data in db
-            if len(latest) == 0:
+            if len(exist_data) == 0:
                 # insert stock_daily_info
                 rsp = SQL.Insert_stock_daily_info(insert, data)
                 if rsp > 0:
@@ -153,7 +153,7 @@ def process(datadate, checkdata):
                     print(str(sid) + ' OK')
             else:
                 # update stock_daily_info
-                if (latest[0][1] == datadate):
+                if (exist_data[0][1] == datadate):
                     latest19 = latest20[1:20]
                     latest4 = latest20[1:5]
                     avg20 = avg_volume(latest19, volume)
