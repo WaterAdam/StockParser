@@ -4,6 +4,7 @@ import twse
 import tpex
 import datetime
 import pandas as pd
+import sys
 from flask import Flask, request, render_template
 
 order_list = ["ForeignTradePercent", "InvTradePercent", "ForeignInvVol", "InvVol"]
@@ -66,15 +67,15 @@ def raw_data_rank():
     datadate = getNowTime();
     #  利用request取得使用者端傳來的方法為何
     if request.method == 'POST':
-        df = pd.DataFrame(columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量'])
+        df = pd.DataFrame(columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量', '本益比'])
         for order in order_list:
-            query_rank = "SELECT i.sid, s.name, i.ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, close, ChangePercent, Volume, AvgVol5, AvgVol20 from stock_daily_info as i " \
+            query_rank = "SELECT i.sid, s.name, i.ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, close, ChangePercent, Volume, AvgVol5, AvgVol20, per from stock_daily_info as i " \
                       "inner join stock as s on s.sid = i.sid " \
                       "where date = %s " \
                       "order by " + order + " desc limit 20"
             # check latest data in DB
             data = SQL.Query_command(query_rank, datadate)
-            tmp = pd.DataFrame(data, columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量'])
+            tmp = pd.DataFrame(data, columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量', '本益比'])
             df = df.append(tmp)
 
         html_file = df.to_html()
@@ -110,10 +111,16 @@ def insert_with_interval():
     return {'done':done_date, 'fail':fail_date}
 
 if __name__ == '__main__':
-    # # for debug test
-    # # datadate = getNowTime()
-    # datadate = datetime.date(2021, 1, 5)
-    # twse.process(datadate, '0')
+    if (len(sys.argv) > 1):
+        # for debug test
+        # datadate = datetime.date(2021, 1, 5)
+        # twse.process(datadate, '0')
 
-    # app.debug = True
-    app.run()
+        if sys.argv[1] == 'today':
+            datadate = getNowTime()
+            twse.process(datadate, '0')
+            tpex.process(datadate, '0')
+    else:
+        # app.debug = True
+        app.run()
+

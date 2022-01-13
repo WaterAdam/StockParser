@@ -3,9 +3,9 @@ create table stock(
    sid INT NOT NULL,
    name VARCHAR(100) NOT NULL,
    industry INT,
+   Capital DECIMAL(16,2) NOT NULL,
    PRIMARY KEY ( sid )
 );
-ALTER TABLE stock ADD Capital DECIMAL(16,2) NOT NULL SET DEFAULT 0.1 -- 新增加資本額欄位
 
 -- 存放產業類別資訊
 create table industry(
@@ -36,6 +36,6 @@ create table stock_daily_info(
    AvgVol5 DECIMAL(16,2) NOT NULL,-- 5均量
    AvgVol20 DECIMAL(16,2) NOT NULL,-- 20均量
    date DATE NOT NULL,
+   per DECIMAL(8,2),
    PRIMARY KEY ( lid )
 );
-ALTER TABLE stock_daily_info ADD COLUMN per DECIMAL(8,2) DEFAULT 0;
