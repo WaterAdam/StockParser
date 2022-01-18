@@ -12,6 +12,10 @@ step1:
 
 step2:
 
+data_backup區有存取 industry, stock & stock_daily_info三張table的資料, 可以直接使用內容補齊既有data
+
+或是
+
 參考DB_build/insert_industry 寫入industry table
 
 參考DB_build/stock_raw 寫入stock table, 且再執行DB_build/upadte_stock 補齊資本額資訊
