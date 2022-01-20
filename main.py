@@ -2,6 +2,8 @@ import time
 import SQL
 import twse
 import tpex
+import twse_index
+import tpex_index
 import datetime
 import pandas as pd
 import sys
@@ -110,16 +112,50 @@ def insert_with_interval():
 
     return {'done':done_date, 'fail':fail_date}
 
+@app.route('/insert_index_interval', methods=['GET', 'POST'])
+def insert_index_interval():
+    return render_template('insert_index_interval.html')
+
+@app.route('/insert_index_with_interval', methods=['POST'])
+def insert_index_with_interval():
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
+        begin = request.values['begin']
+        end = request.values['end']
+        done_date = ''
+        fail_date = ''
+        print("time interval is %s to %s" % (begin, end))
+
+        a = pd.date_range(start=begin, end=end)
+        # display only date using date() function
+        for i in a:
+            print(i.date())
+            try:
+                rsp_twse = twse_index.process(i.date(), '0')
+                rsp_tpex = tpex_index.process(i.date(), '0')
+                rsp_tpex = True
+                if (rsp_twse & rsp_tpex):
+                    done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+                else:
+                    fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+            except Exception as ex:
+                print(ex)
+                fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+
+    return {'done':done_date, 'fail':fail_date}
+
 if __name__ == '__main__':
     if (len(sys.argv) > 1):
         # for debug test
-        # datadate = datetime.date(2021, 1, 5)
+        # datadate = datetime.date(2022, 1, 18)
         # twse.process(datadate, '0')
 
-        if sys.argv[1] == 'today':
+        if sys.argv[1] == 'latest':
             datadate = getNowTime()
             twse.process(datadate, '0')
             tpex.process(datadate, '0')
+            twse_index.process(datadate, '0')
+            tpex_index.process(datadate, '0')
     else:
         # app.debug = True
         app.run()

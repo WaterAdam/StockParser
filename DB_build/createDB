@@ -39,3 +39,19 @@ create table stock_daily_info(
    per DECIMAL(8,2),
    PRIMARY KEY ( lid )
 );
+
+-- 存放大盤每日搜集的data
+create table index_daily_info(
+   lid INT NOT NULL AUTO_INCREMENT,
+   id VARCHAR(20) NOT NULL,
+   Close DECIMAL(8,2) NOT NULL,
+   Volume INT NOT NULL,
+   ChangePrice DECIMAL(8,2) NOT NULL,-- 漲跌價
+   ChangePercent DECIMAL(8,2) NOT NULL,-- 漲跌幅
+   ForeignInvVol DECIMAL(10,0) NOT NULL,
+   InvVol DECIMAL(10,0) NOT NULL,
+   AvgVol5 DECIMAL(16,2) NOT NULL,-- 5均量
+   AvgVol20 DECIMAL(16,2) NOT NULL,-- 20均量
+   date DATE NOT NULL,
+   PRIMARY KEY ( lid )
+);

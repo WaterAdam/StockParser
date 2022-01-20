@@ -23,7 +23,7 @@ data_backup區有存取 industry, stock & stock_daily_info三張table的資料, 
 step3:
 執行程式, 預設會啟用flask建置的網站127.0.0.1:5000
 
-如果要使用排程自動執行, 則在輸入參數帶入'today' 資訊
+如果要使用排程自動執行, 則在輸入參數帶入'latest' 資訊
 
 參考資料(有時間參數請自行調整)：
 

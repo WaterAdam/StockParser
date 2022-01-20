@@ -15,14 +15,13 @@
     <script>
         $( document ).ready(function() {
 
-            $(".insert-interval-data").click(function(){
+            $(".insert-index-interval-data").click(function(){
                 begin_date = $("#begin_date").val();
                 end_date = $("#end_date").val();
-                alert("收一日data約需1分鐘, 請稍等");
 
                 $.ajax({
                     type: 'POST',
-                    url: '/insert_with_interval',
+                    url: '/insert_index_with_interval',
                     data: {'begin': begin_date, 'end': end_date},
                     dataType: "json",
 
@@ -55,7 +54,7 @@
                 <span class="input-group-addon">to</span>
                 <input type="text" class="input-sm form-control" id='end_date' value="2021-01-05" placeholder="2022-01-31" name="end" />
             </div>
-            <button id="insert_interval" type="button" class='btn btn-primary insert-interval-data'>寫入DB</button>
+            <button id="insert_index_interval" type="button" class='btn btn-primary insert-index-interval-data'>寫入DB</button>
         </div>
 
         <hr size="1px" align="center" width="100%">

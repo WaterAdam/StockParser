@@ -59,3 +59,31 @@ def Update_stock_daily_info(command, data):
     except Exception as ex:
         print(str(data[0]) + ' fail')
         return data[0]
+
+def Insert_index_daily_info(command, data):
+    try:
+        # 建立Connection物件
+        conn = pymysql.connect(**db_settings)
+        # 建立Cursor物件
+        with conn.cursor() as cursor:
+            cursor.execute(command, data)
+            conn.commit()
+            cursor.close()
+        return 0
+    except Exception as ex:
+        print(data[0] + ' fail at ' + data[-1])
+        return 1
+
+def Update_index_daily_info(command, data):
+    try:
+        # 建立Connection物件
+        conn = pymysql.connect(**db_settings)
+        # 建立Cursor物件
+        with conn.cursor() as cursor:
+            cursor.execute(command, data)
+            conn.commit()
+            cursor.close()
+        return 0
+    except Exception as ex:
+        print(data[-1] + ' fail at ' + data[-2])
+        return 1
