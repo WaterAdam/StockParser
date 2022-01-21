@@ -11,6 +11,7 @@ from flask import Flask, request, render_template
 
 order_list = ["ForeignTradePercent", "InvTradePercent", "ForeignInvVol", "InvVol"]
 
+# 取得最新資料時間(每日16:00開始才會有法人進出data)
 def getNowTime():
     mytime = time.localtime()
     if mytime.tm_hour > 15:
@@ -26,6 +27,7 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
+# 檢查上市櫃是否已經有data
 @app.route('/check', methods=['POST'])
 def check():
     datadate = getNowTime();
@@ -43,11 +45,14 @@ def check():
         html_file = a.to_html()
     return {'data':html_file, 'date':datadate.strftime("%Y-%m-%d")}
 
+# 將當日證交所/櫃買中心的指數&個股資訊寫入DB
 @app.route('/insert', methods=['POST'])
 def insert():
     datadate = getNowTime();
     #  利用request取得使用者端傳來的方法為何
     if request.method == 'POST':
+        twse_index.process(datadate, '0')
+        tpex_index.process(datadate, '0')
         file_twse = twse.process(datadate, '0')
         file2_tpex = tpex.process(datadate, '0')
 
@@ -64,6 +69,8 @@ def insert():
         html_file = df.to_html()
     return {'data':html_file, 'date':datadate.strftime("%Y-%m-%d")}
 
+# show出每日排名, 分別是外本比、投本比、外資買超、投信買超排名
+# 並整合在同一個table內，方便直接貼上
 @app.route('/raw_data_rank', methods=['POST'])
 def raw_data_rank():
     datadate = getNowTime();
@@ -87,6 +94,7 @@ def raw_data_rank():
 def insert_interval():
     return render_template('insert_interval.html')
 
+# 選擇時間區間，並寫入該時段內的個股收盤資訊
 @app.route('/insert_with_interval', methods=['POST'])
 def insert_with_interval():
     #  利用request取得使用者端傳來的方法為何
@@ -101,13 +109,11 @@ def insert_with_interval():
         # display only date using date() function
         for i in a:
             print(i.date())
-            try:
-                file_twse = twse.process(i.date(), '0')
-                file2_tpex = tpex.process(i.date(), '0')
+            rsp_twse = twse.process(i.date(), '0')
+            rsp_tpex = tpex.process(i.date(), '0')
+            if (rsp_twse & rsp_tpex):
                 done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
-            except Exception as ex:
-                print(ex)
-                print("fail date is " + i.date().strftime("%Y-%m-%d"))
+            else:
                 fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
 
     return {'done':done_date, 'fail':fail_date}
@@ -116,6 +122,7 @@ def insert_with_interval():
 def insert_index_interval():
     return render_template('insert_index_interval.html')
 
+# 選擇時間區間，並寫入該時段內的大盤收盤資訊
 @app.route('/insert_index_with_interval', methods=['POST'])
 def insert_index_with_interval():
     #  利用request取得使用者端傳來的方法為何
@@ -130,19 +137,67 @@ def insert_index_with_interval():
         # display only date using date() function
         for i in a:
             print(i.date())
-            try:
-                rsp_twse = twse_index.process(i.date(), '0')
-                rsp_tpex = tpex_index.process(i.date(), '0')
-                rsp_tpex = True
-                if (rsp_twse & rsp_tpex):
-                    done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
-                else:
-                    fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
-            except Exception as ex:
-                print(ex)
+            rsp_twse = twse_index.process(i.date(), '0')
+            rsp_tpex = tpex_index.process(i.date(), '0')
+            if (rsp_twse & rsp_tpex):
+                done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+            else:
                 fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
 
+            time.sleep(15)
+
     return {'done':done_date, 'fail':fail_date}
+
+@app.route('/pair_trade', methods=['GET', 'POST'])
+def pair_trade():
+    return render_template('pair_trade.html')
+
+# 配對交易
+@app.route('/ajax_pair_trade', methods=['POST'])
+def ajax_pair_trade():
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
+        sid1 = request.values['sid1']
+        sid2 = request.values['sid2']
+        print(sid1)
+        print(sid2)
+        # done_date = ''
+        # fail_date = ''
+        # print("time interval is %s to %s" % (begin, end))
+        #
+        # a = pd.date_range(start=begin, end=end)
+        # # display only date using date() function
+        # for i in a:
+        #     print(i.date())
+        #     rsp_twse = twse_index.process(i.date(), '0')
+        #     # rsp_tpex = tpex_index.process(i.date(), '0')
+        #     rsp_tpex = True
+        #     if (rsp_twse & rsp_tpex):
+        #         done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+        #     else:
+        #         fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
+        #
+        #     time.sleep(10)
+
+    return {'done':sid1, 'fail':sid2}
+
+# 使用sid取得stock name
+@app.route('/ajax_stock_name', methods=['POST'])
+def ajax_stock_name():
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
+        sid = request.values['sid']
+        query = "SELECT name from stock where sid = %s"
+
+        # check latest data in DB
+        data = SQL.Query_command(query, sid)
+        name = ''
+        if len(data) == 0:
+            name = '無此股票'
+        else:
+            name = data[0][0]
+
+    return {'name':name}
 
 if __name__ == '__main__':
     if (len(sys.argv) > 1):

@@ -14,15 +14,34 @@
 
     <script>
         $( document ).ready(function() {
+            $(".sid-input").on('input',function(e){
+                if ($(this).val().length == 4) {
+                    var label = $(this).parent().find('label')
+                    $.ajax({
+                        type: 'POST',
+                        url: '/ajax_stock_name',
+                        data: {'sid': $(this).val()},
+                        dataType: "json",
 
-            $(".insert-index-interval-data").click(function(){
-                begin_date = $("#begin_date").val();
-                end_date = $("#end_date").val();
+                        success: function(rep){
+                            console.log(rep);
+                            label.html(rep.name);
+                        },
+                        error:function(xhr, ajaxOptions, thrownError){
+                            alert(thrownError);
+                        }
+                    });
+                }
+            });
+
+            $("#query").click(function(){
+                sid1 = $("#sid1").val();
+                sid2 = $("#sid2").val();
 
                 $.ajax({
                     type: 'POST',
-                    url: '/insert_index_with_interval',
-                    data: {'begin': begin_date, 'end': end_date},
+                    url: '/ajax_pair_trade',
+                    data: {'sid1': sid1, 'sid2': sid2},
                     dataType: "json",
 
                     success: function(rep){
@@ -33,7 +52,7 @@
                     error:function(xhr, ajaxOptions, thrownError){
                         alert(thrownError);
                     }
-                  });
+                });
             });
 
         });
@@ -42,28 +61,31 @@
 </head>
 <body>
     <div class='container'>
-        <h2>寫入大盤資料</h2>
+        <h2>配對交易</h2>
         <a href="{{ url_for('index') }}" class='btn btn-primary'>Home</a>
 
-        <h2>1. 時間選擇</h2>
-        <h2>2. 寫入</h2>
+        <h2>1. 股號選擇</h2>
+        <h2>2. 查詢</h2>
         <div>
-            <label class="control-label">起始時間</label>
-            <div class="input-daterange input-group" id="datepicker">
-                <input type="text" class="input-sm form-control" id='begin_date' value="2021-01-01" placeholder="2022-01-01" name="start" />
-                <span class="input-group-addon">to</span>
-                <input type="text" class="input-sm form-control" id='end_date' value="2021-01-05" placeholder="2022-01-31" name="end" />
+            <label class="control-label">股號1</label>
+            <div>
+                <input type="text" id="sid1" name="sid1" class="sid-input">
+                <label class="control-label" id="stock1"></label>
             </div>
-            <button id="insert_index_interval" type="button" class='btn btn-primary insert-index-interval-data'>寫入DB</button>
+
+            <label class="control-label">股號2</label>
+            <div>
+                <input type="text" id="sid2" name="sid2" class="sid-input">
+                <label class="control-label" id="stock2"></label>
+            </div>
+            <button id="query" type="button" class='btn btn-primary query'>查詢</button>
         </div>
 
         <hr size="1px" align="center" width="100%">
         <h3>資料檢查：</h3>
-        <div><label>失敗的日期</label></div>
-        <textarea id="fail_date" name="textarea" rows="10" cols="50"></textarea>
+        <div id="table_list">
 
-        <div><label>成功的日期</label></div>
-        <textarea id="success_date" name="textarea" rows="10" cols="50"></textarea>
+        </div>
 
     </div>
 </body>
