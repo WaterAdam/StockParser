@@ -76,6 +76,7 @@ def raw_data_rank():
     datadate = getNowTime();
     #  利用request取得使用者端傳來的方法為何
     if request.method == 'POST':
+        # 每日排名
         df = pd.DataFrame(columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量', '本益比'])
         for order in order_list:
             query_rank = "SELECT i.sid, s.name, i.ForeignInvVol, InvVol, ForeignTradePercent, InvTradePercent, close, ChangePercent, Volume, AvgVol5, AvgVol20, per from stock_daily_info as i " \
@@ -87,8 +88,32 @@ def raw_data_rank():
             tmp = pd.DataFrame(data, columns=['股號', '股名', '外資買賣超', '投信買賣超', '外本比', '投本比', '收盤', '漲跌%', '成交量', '5日均量', '20日均量', '本益比'])
             df = df.append(tmp)
 
-        html_file = df.to_html()
-    return {'data':html_file, 'date':datadate.strftime("%Y-%m-%d")}
+        stock_rank = df.to_html()
+
+        # 每日大盤
+        df = pd.DataFrame(
+            columns=['指數', '收盤', '變化率', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量'])
+        query_index = "SELECT id, Close, ChangePercent, Volume, ForeignInvVol, InvVol, AvgVol5, AvgVol20 from index_daily_info as i " \
+                     "where date = %s "
+        # check latest data in DB
+        data = SQL.Query_command(query_index, datadate)
+        tmp = pd.DataFrame(data,
+                           columns=['指數', '收盤', '變化率', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量'])
+        df = df.append(tmp)
+        df['變化率'] = df['變化率'].astype(str) + '%'
+        df['交易量'] = df['交易量'].astype(int) / 100
+        df['交易量'] = df['交易量'].astype(str) + '億'
+        df['外資買賣超'] = df['外資買賣超'].astype(int) / 100
+        df['外資買賣超'] = df['外資買賣超'].astype(str) + '億'
+        df['投信買賣超'] = df['投信買賣超'].astype(int) / 100
+        df['投信買賣超'] = df['投信買賣超'].astype(str) + '億'
+        df['5日均量'] = df['5日均量'].astype(int) / 100
+        df['5日均量'] = df['5日均量'].astype(str) + '億'
+        df['20日均量'] = df['20日均量'].astype(int) / 100
+        df['20日均量'] = df['20日均量'].astype(str) + '億'
+
+        index_data = df.to_html()
+    return {'data':stock_rank, 'date':datadate.strftime("%Y-%m-%d"), 'index':index_data}
 
 @app.route('/insert_interval', methods=['GET', 'POST'])
 def insert_interval():
