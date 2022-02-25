@@ -75,11 +75,28 @@
                     dataType: "json",
 
                     success: function(rep){
+                        $("#table_list").find(".dataframe").remove();
+                        $("#table_list").append(rep.data);
+                        $(".display-title").html(rep.date + ' 收盤');
+                    },
+                    error:function(xhr, ajaxOptions, thrownError){
+                        alert(thrownError);
+                    }
+                  });
+            });
+
+            // display rank data
+            $(".index-data").click(function(){
+                $.ajax({
+                    type: 'POST',
+                    url: '/raw_index_data',
+                    data: {'act': this.id},
+                    dataType: "json",
+
+                    success: function(rep){
                         console.log(rep)
                         $("#table_list").find(".dataframe").remove();
                         $("#table_list").append(rep.data);
-                        $("#table_index").find(".dataframe").remove();
-                        $("#table_index").append(rep.index);
                         $(".display-title").html(rep.date + ' 收盤');
                     },
                     error:function(xhr, ajaxOptions, thrownError){
@@ -111,6 +128,7 @@
         <h2>3. 查看data</h2>
         <div>
             <button id="raw_rank" type="button" class='btn btn-primary rank-data'>每日排名</button>
+            <button id="index_rank" type="button" class='btn btn-primary index-data'>台股指數資料</button>
         </div>
         <h2>其他服務</h2>
         <div>
@@ -119,11 +137,11 @@
             <a href="{{ url_for('pair_trade') }}" class='btn btn-primary'>配對交易</a>
         </div>
 
-        <hr size="1px" align="center" width="100%">
-        <div><label class="display-title"></label></div>
-        <div id="table_index">
+<!--        <hr size="1px" align="center" width="100%">-->
+<!--        <div><label class="display-title"></label></div>-->
+<!--        <div id="table_index">-->
 
-        </div>
+<!--        </div>-->
 
         <hr size="1px" align="center" width="100%">
         <div><h3>資料檢查：</h3><label class="display-title"></label></div>

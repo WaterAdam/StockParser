@@ -90,17 +90,25 @@ def raw_data_rank():
 
         stock_rank = df.to_html()
 
+    return {'data':stock_rank, 'date':datadate.strftime("%Y-%m-%d")}
+
+# show 60日加權&櫃買指數資訊，含法人進出
+@app.route('/raw_index_data', methods=['POST'])
+def raw_index_data():
+    datadate = getNowTime();
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
         # 每日大盤
         df = pd.DataFrame(
-            columns=['指數', '收盤', '變化率', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量'])
-        query_index = "SELECT id, Close, ChangePercent, Volume, ForeignInvVol, InvVol, AvgVol5, AvgVol20 from index_daily_info as i " \
-                     "where date = %s "
+            columns=['指數', '收盤', '漲跌幅', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量', '日期'])
+        query_index = "select * from (SELECT id, Close, ChangePercent, Volume, ForeignInvVol, InvVol, AvgVol5, AvgVol20, date from index_daily_info as i " \
+                      "order by date desc limit 120) as t order by t.id desc, t.date desc"
         # check latest data in DB
-        data = SQL.Query_command(query_index, datadate)
+        data = SQL.Query_command(query_index)
         tmp = pd.DataFrame(data,
-                           columns=['指數', '收盤', '變化率', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量'])
+                           columns=['指數', '收盤', '漲跌幅', '交易量', '外資買賣超', '投信買賣超', '5日均量', '20日均量', '日期'])
         df = df.append(tmp)
-        df['變化率'] = df['變化率'].astype(str) + '%'
+        df['漲跌幅'] = df['漲跌幅'].astype(str) + '%'
         df['交易量'] = df['交易量'].astype(int) / 100
         df['交易量'] = df['交易量'].astype(str) + '億'
         df['外資買賣超'] = df['外資買賣超'].astype(int) / 100
@@ -112,8 +120,8 @@ def raw_data_rank():
         df['20日均量'] = df['20日均量'].astype(int) / 100
         df['20日均量'] = df['20日均量'].astype(str) + '億'
 
-        index_data = df.to_html()
-    return {'data':stock_rank, 'date':datadate.strftime("%Y-%m-%d"), 'index':index_data}
+        data = df.to_html()
+    return {'data':data, 'date':datadate.strftime("%Y-%m-%d")}
 
 @app.route('/insert_interval', methods=['GET', 'POST'])
 def insert_interval():
@@ -184,27 +192,42 @@ def ajax_pair_trade():
     if request.method == 'POST':
         sid1 = request.values['sid1']
         sid2 = request.values['sid2']
-        print(sid1)
-        print(sid2)
-        # done_date = ''
-        # fail_date = ''
-        # print("time interval is %s to %s" % (begin, end))
-        #
-        # a = pd.date_range(start=begin, end=end)
-        # # display only date using date() function
-        # for i in a:
-        #     print(i.date())
-        #     rsp_twse = twse_index.process(i.date(), '0')
-        #     # rsp_tpex = tpex_index.process(i.date(), '0')
-        #     rsp_tpex = True
-        #     if (rsp_twse & rsp_tpex):
-        #         done_date += "%s \n" % i.date().strftime("%Y-%m-%d")
-        #     else:
-        #         fail_date += "%s \n" % i.date().strftime("%Y-%m-%d")
-        #
-        #     time.sleep(10)
 
-    return {'done':sid1, 'fail':sid2}
+        df = pd.DataFrame(
+            columns=['date', 'closeA', 'volA', 'twse', 'tpex', 'closeB', 'volB'])
+
+        query_index = "select a.date, aclose, avolume, a.twse, a.tpex, bclose, bvolume from " \
+                      "(select si.date, si.close as aclose, si.Volume as avolume, ind.close as twse, ind2.close as tpex from " \
+                      "stock as st " \
+                      "inner join stock_daily_info as si on si.sid = st.sid " \
+                      "inner join index_daily_info as ind on ind.date = si.date and ind.id = 'twse' " \
+                      "inner join index_daily_info as ind2 on ind2.date = si.date and ind2.id = 'tpex' " \
+                      "where si.sid = %s ORDER by si.date desc limit 120) as a " \
+                      "inner join (select si.date, si.close as bclose, si.Volume as bvolume, ind.close as twse, ind2.close as tpex from " \
+                      "stock as st " \
+                      "inner join stock_daily_info as si on si.sid = st.sid " \
+                      "inner join index_daily_info as ind on ind.date = si.date and ind.id = 'twse' " \
+                      "inner join index_daily_info as ind2 on ind2.date = si.date and ind2.id = 'tpex' " \
+                      "where si.sid = %s ORDER by si.date desc limit 120) as b " \
+                      "on b.date = a.date order by a.date desc"
+        # check latest data in DB
+        data = SQL.Query_command(query_index, [sid1, sid2])
+        tmp = pd.DataFrame(data,
+                           columns=['date', 'closeA', 'volA', 'twse', 'tpex', 'closeB', 'volB'])
+        df = df.append(tmp)
+        df['diff'] = df['closeA'] - df['closeB']
+        df['twseA'] = ''
+        df['twseB'] = ''
+
+        df = df[['date', 'twse', 'tpex', 'closeA', 'volA', 'twseA', 'closeB', 'volB', 'twseB', 'diff']]
+        arr = df.values.tolist()
+
+        column = df["diff"]
+        max_value = column.max()
+        min_value = column.min()
+        avg_value = df["diff"].mean()
+
+    return {'data': arr, 'avg' : avg_value, 'max' : max_value, 'min': min_value}
 
 # 使用sid取得stock name
 @app.route('/ajax_stock_name', methods=['POST'])

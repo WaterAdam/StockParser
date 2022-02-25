@@ -11,6 +11,8 @@
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.4/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.js"></script>
 
     <script>
         $( document ).ready(function() {
@@ -24,7 +26,6 @@
                         dataType: "json",
 
                         success: function(rep){
-                            console.log(rep);
                             label.html(rep.name);
                         },
                         error:function(xhr, ajaxOptions, thrownError){
@@ -33,29 +34,83 @@
                     });
                 }
             });
-
-            $("#query").click(function(){
-                sid1 = $("#sid1").val();
-                sid2 = $("#sid2").val();
-
-                $.ajax({
-                    type: 'POST',
-                    url: '/ajax_pair_trade',
-                    data: {'sid1': sid1, 'sid2': sid2},
-                    dataType: "json",
-
-                    success: function(rep){
-                        console.log(rep)
-                        $("#success_date").html(rep.done);
-                        $("#fail_date").html(rep.fail);
-                    },
-                    error:function(xhr, ajaxOptions, thrownError){
-                        alert(thrownError);
-                    }
-                });
-            });
-
         });
+
+        function doQuery() {
+            if ( $.fn.dataTable.isDataTable( '#dataTables-list' ) ) {
+                table = $('#dataTables-list').DataTable();
+                table.destroy();
+            }
+            $('#dataTables-list').show();
+            $('#dataTables-list').DataTable( {
+                "processing": true,
+                "serverSide": false,
+                "searching" : false,
+                "ordering"  : false,
+                // "order"     : [[ 0, "desc" ]],
+
+                iDisplayLength: 120,
+                "Paginate": false,
+                "bPaginate": false,
+                "bLengthChange": false,
+                "bFilter": true,
+                "bInfo": false,
+
+                "ajax": {
+                    url: '/ajax_pair_trade',
+                    type: 'POST',
+                    data: function (d) {
+                        delete d.columns;
+                        delete d.search;
+                        d.sid1 = $("#sid1").val();
+                        d.sid2 = $("#sid2").val();
+                    },
+                    error: function(e){
+                      alert(e);
+                    }
+                },
+                "columnDefs": [
+                    {
+                        "targets": [5],
+                        "render": function ( item, type, row ) {
+                            (row[3] < 100) ? (val = row[1] / 1000) : (val = row[1] / 100)
+                            return Math.round(val * 100000) / 100000;
+                        },
+                        "data": null,
+                    },
+                    {
+                        "targets": [8],
+                        "render": function ( item, type, row ) {
+                            (row[6] < 100) ? (val = row[1] / 1000) : (val = row[1] / 100)
+                            return Math.round(val * 100000) / 100000;
+                        },
+                        "data": null,
+                    },
+                ],
+                "drawCallback": function () {
+                    var max = 0;
+                    var min = 9999;
+                    var avg = 0;
+                    var cnt = 0;
+                    this.api().rows().every( function ( ) {
+                        var data = this.data();
+                        var values = data.slice(-1).map(Number);
+                        avg += values[0];
+                        (max < values[0]) ? (max = values[0]) : (max = max);
+                        (min > values[0]) ? (min = values[0]) : (min = min);
+                        cnt++;
+                    });
+                    $('#avg_value').html(Math.round(avg/cnt * 100) / 100);
+                    $('#max_value').html(max);
+                    $('#min_value').html(min);
+
+                    var table = $('#datatable-list').DataTable();
+                    //var data = table.rows().data();
+                    var data = table.rows().data().map(Number);
+                    console.log(data);
+                }
+            });
+        }
 
     </script>
 </head>
@@ -67,24 +122,62 @@
         <h2>1. 股號選擇</h2>
         <h2>2. 查詢</h2>
         <div>
-            <label class="control-label">股號1</label>
+            <label class="control-label">股號A</label>
             <div>
-                <input type="text" id="sid1" name="sid1" class="sid-input">
+                <input type="text" id="sid1" name="sid1" class="sid-input" value="2603">
                 <label class="control-label" id="stock1"></label>
             </div>
 
-            <label class="control-label">股號2</label>
+            <label class="control-label">股號B</label>
             <div>
-                <input type="text" id="sid2" name="sid2" class="sid-input">
+                <input type="text" id="sid2" name="sid2" class="sid-input" value="2609">
                 <label class="control-label" id="stock2"></label>
             </div>
-            <button id="query" type="button" class='btn btn-primary query'>查詢</button>
+            <button id="query" type="button" class='btn btn-primary query' onclick="doQuery();">查詢</button>
         </div>
 
         <hr size="1px" align="center" width="100%">
         <h3>資料檢查：</h3>
         <div id="table_list">
 
+        </div>
+
+        <div class="table-area">
+            <table id="diff-info" class="table">
+                <thead>
+                    <tr>
+                        <th>現股平均價差</th>
+                        <th>現股最大價差</th>
+                        <th>現股最小價差</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th id="avg_value"></th>
+                        <th id="max_value"></th>
+                        <th id="min_value"></th>
+                    </tr>
+                </tbody>
+
+            </table>
+
+            <table id="dataTables-list" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>加權</th>
+                        <th>櫃買</th>
+                        <th>A收盤</th>
+                        <th>A成交量</th>
+                        <th>A加權調整</th>
+                        <th>B收盤</th>
+                        <th>B成交量</th>
+                        <th>B加權調整</th>
+                        <th>價差</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
     </div>
