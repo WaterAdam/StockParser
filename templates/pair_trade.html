@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hello</title>
+    <title>配對交易</title>
     <!-- CSS only -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
     <!-- JavaScript Bundle with Popper -->
@@ -16,6 +16,7 @@
 
     <script>
         $( document ).ready(function() {
+            // 取得股號名稱，方便識別資料正確性
             $(".sid-input").on('input',function(e){
                 if ($(this).val().length == 4) {
                     var label = $(this).parent().find('label')
@@ -36,7 +37,15 @@
             });
         });
 
+        var json_object;
+
+        // 取得120日交易資訊
         function doQuery() {
+<!--            $('#stock1').html('長榮'); // to do remove-->
+<!--            $('#stock2').html('陽明'); // to do remove-->
+            $('.stock-A').html($('#stock1').html());
+            $('.stock-B').html($('#stock2').html());
+
             if ( $.fn.dataTable.isDataTable( '#dataTables-list' ) ) {
                 table = $('#dataTables-list').DataTable();
                 table.destroy();
@@ -71,6 +80,7 @@
                 },
                 "columnDefs": [
                     {
+                        // 調整大盤與股價關係因子
                         "targets": [5],
                         "render": function ( item, type, row ) {
                             (row[3] < 100) ? (val = row[1] / 1000) : (val = row[1] / 100)
@@ -79,6 +89,7 @@
                         "data": null,
                     },
                     {
+                        // 調整大盤與股價關係因子
                         "targets": [8],
                         "render": function ( item, type, row ) {
                             (row[6] < 100) ? (val = row[1] / 1000) : (val = row[1] / 100)
@@ -88,6 +99,9 @@
                     },
                 ],
                 "drawCallback": function () {
+                    $('#dataTables-list').show();
+                    $('#diff-info').show();
+
                     var max = 0;
                     var min = 9999;
                     var avg = 0;
@@ -104,10 +118,65 @@
                     $('#max_value').html(max);
                     $('#min_value').html(min);
 
-                    var table = $('#datatable-list').DataTable();
-                    //var data = table.rows().data();
-                    var data = table.rows().data().map(Number);
-                    console.log(data);
+                    // 將datatable資訊轉換成json format
+                    var table = document.getElementById("dataTables-list");
+                    json_object = tableToJson(table);
+                }
+            });
+        }
+
+        // 取得json資訊
+        function tableToJson(table) {
+            var data = [];
+
+            // first row needs to be headers
+            var headers = [];
+            for (var i=0; i<table.rows[0].cells.length; i++) {
+                //headers[i] = table.rows[0].cells[i].innerHTML.toLowerCase().replace(/ /gi,'');
+                headers[i] = i;
+            }
+
+            // go through cells
+            for (var i=1; i<table.rows.length; i++) {
+
+                var tableRow = table.rows[i];
+                var rowData = {};
+
+                for (var j=0; j<tableRow.cells.length; j++) {
+
+                    rowData[ headers[j] ] = tableRow.cells[j].innerHTML;
+
+                }
+
+                data.push(rowData);
+            }
+
+            return data;
+        }
+
+        // 計算Correl關係係數
+        function getCorrel() {
+            $.ajax({
+                type: 'POST',
+                url: '/ajax_get_correl',
+                // data: {'json_object': json_object},
+                data: JSON.stringify(json_object),
+                dataType: "json",
+                contentType: 'application/json',
+
+                success: function(rep){
+                    $('#correl-info').show();
+                    $('#c_closeA_twseA').html(Math.round(rep['c_closeA_twseA'] * 1000)  / 1000);
+                    $('#c_volA_twseA').html(Math.round(rep['c_volA_twseA'] * 1000)  / 1000);
+                    $('#c_closeB_twseB').html(Math.round(rep['c_closeB_twseB'] * 1000)  / 1000);
+                    $('#c_volB_twseB').html(Math.round(rep['c_volB_twseB'] * 1000)  / 1000);
+                    $('#c_twse_diff').html(Math.round(rep['c_twse_diff'] * 1000)  / 1000);
+                    $('#c_tpex_diff').html(Math.round(rep['c_tpex_diff'] * 1000)  / 1000);
+                    $('#c_closeA_closeB').html(Math.round(rep['c_closeA_closeB'] * 1000)  / 1000);
+                    $('#c_volA_closeB').html(Math.round(rep['c_volA_closeB'] * 1000)  / 1000);
+                },
+                error:function(xhr, ajaxOptions, thrownError){
+                    alert(thrownError);
                 }
             });
         }
@@ -119,8 +188,6 @@
         <h2>配對交易</h2>
         <a href="{{ url_for('index') }}" class='btn btn-primary'>Home</a>
 
-        <h2>1. 股號選擇</h2>
-        <h2>2. 查詢</h2>
         <div>
             <label class="control-label">股號A</label>
             <div>
@@ -134,6 +201,7 @@
                 <label class="control-label" id="stock2"></label>
             </div>
             <button id="query" type="button" class='btn btn-primary query' onclick="doQuery();">查詢</button>
+            <button id="correl" type="button" class='btn btn-primary query' onclick="getCorrel();">計算係數</button>
         </div>
 
         <hr size="1px" align="center" width="100%">
@@ -143,7 +211,7 @@
         </div>
 
         <div class="table-area">
-            <table id="diff-info" class="table">
+            <table id="diff-info" class="table table-primary" style="display:none">
                 <thead>
                     <tr>
                         <th>現股平均價差</th>
@@ -161,18 +229,47 @@
 
             </table>
 
-            <table id="dataTables-list" class="table table-striped table-bordered">
+            <table id="correl-info" class="table table-sm table-success" style="display:none">
+                <thead>
+                    <tr>
+                        <th>收盤A_加權A調整</th>
+                        <th>成交量A_加權A調整</th>
+                        <th>收盤B_加權B調整</th>
+                        <th>成交量B_加權B調整</th>
+                        <th>加權_價差</th>
+                        <th>櫃買_價差</th>
+                        <th>收盤A_收盤B</th>
+                        <th>成交量A_成交量B</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th id="c_closeA_twseA"
+                        ></th>
+                        <th id="c_volA_twseA"></th>
+                        <th id="c_closeB_twseB"></th>
+                        <th id="c_volB_twseB"></th>
+                        <th id="c_twse_diff"></th>
+                        <th id="c_tpex_diff"></th>
+                        <th id="c_closeA_closeB"></th>
+                        <th id="c_volA_closeB"></th>
+                    </tr>
+                </tbody>
+
+            </table>
+
+            <table id="dataTables-list" class="table table-striped table-bordered" style="display:none">
                 <thead>
                     <tr>
                         <th>日期</th>
                         <th>加權</th>
                         <th>櫃買</th>
-                        <th>A收盤</th>
-                        <th>A成交量</th>
-                        <th>A加權調整</th>
-                        <th>B收盤</th>
-                        <th>B成交量</th>
-                        <th>B加權調整</th>
+                        <th><span class="stock-A">A</span>收盤</th>
+                        <th><span class="stock-A">A</span>成交量</th>
+                        <th><span class="stock-A">A</span>加權調整</th>
+                        <th><span class="stock-B">B</span>收盤</th>
+                        <th><span class="stock-B">B</span>成交量</th>
+                        <th><span class="stock-B">B</span>加權調整</th>
                         <th>價差</th>
                     </tr>
                 </thead>

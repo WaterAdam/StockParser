@@ -8,6 +8,8 @@ import datetime
 import pandas as pd
 import sys
 from flask import Flask, request, render_template
+import json
+import numpy as np
 
 order_list = ["ForeignTradePercent", "InvTradePercent", "ForeignInvVol", "InvVol"]
 
@@ -229,6 +231,74 @@ def ajax_pair_trade():
 
     return {'data': arr, 'avg' : avg_value, 'max' : max_value, 'min': min_value}
 
+# 計算correl係數
+@app.route('/ajax_get_correl', methods=['POST'])
+def ajax_get_correl():
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
+        json_object = request.json
+        # print(json.loads(json_object))
+
+        # sid = request.values['sid']
+        # query = "SELECT name from stock where sid = %s"
+        #
+        # # check latest data in DB
+        # data = SQL.Query_command(query, sid)
+        # name = ''
+        # if len(data) == 0:
+        #     name = '無此股票'
+        # else:
+        #     name = data[0][0]
+
+        np.random.seed(100)
+        # create array of 50 random integers between 0 and 10
+        var1 = np.random.randint(0, 10, 50)
+        print(var1)
+        # create a positively correlated array with some random noise
+        var2 = var1 + np.random.normal(0, 10, 50)
+        # calculate the correlation between the two arrays
+        # print(np.corrcoef(var1, var2))
+
+        df = pd.DataFrame(json_object)
+        # df = df[['date', 'twse', 'tpex', 'closeA', 'volA', 'twseA', 'closeB', 'volB', 'twseB', 'diff']]
+        df['1'] = pd.to_numeric(df['1'])
+        df['2'] = pd.to_numeric(df['2'])
+        df['3'] = pd.to_numeric(df['3'])
+        df['4'] = pd.to_numeric(df['4'])
+        df['5'] = pd.to_numeric(df['5'])
+        df['6'] = pd.to_numeric(df['6'])
+        df['7'] = pd.to_numeric(df['7'])
+        df['8'] = pd.to_numeric(df['8'])
+        df['9'] = pd.to_numeric(df['9'])
+        twse = df['1'].to_numpy()
+        tpex = df['2'].to_numpy()
+        closeA = df['3'].tolist()
+        volA = df['4'].tolist()
+        twseA = df['5'].tolist()
+        closeB = df['6'].tolist()
+        volB = df['7'].tolist()
+        twseB = df['8'].tolist()
+        diff = df['9'].tolist()
+        c_closeA_twseA = np.corrcoef(closeA, twseA)[0][1]
+        c_volA_twseA = np.corrcoef(volA, twseA)[0][1]
+        c_closeB_twseB = np.corrcoef(closeB, twseB)[0][1]
+        c_volB_twseB = np.corrcoef(volB, twseB)[0][1]
+        c_twse_diff = np.corrcoef(twse, diff)[0][1]
+        c_tpex_diff = np.corrcoef(tpex, diff)[0][1]
+        c_closeA_closeB = np.corrcoef(closeA, closeB)[0][1]
+        c_volA_closeB = np.corrcoef(volA, volB)[0][1]
+
+    return {
+        'c_closeA_twseA':c_closeA_twseA,
+        'c_volA_twseA':c_volA_twseA,
+        'c_closeB_twseB':c_closeB_twseB,
+        'c_volB_twseB': c_volB_twseB,
+        'c_twse_diff': c_twse_diff,
+        'c_tpex_diff': c_tpex_diff,
+        'c_closeA_closeB': c_closeA_closeB,
+        'c_volA_closeB': c_volA_closeB,
+    }
+
 # 使用sid取得stock name
 @app.route('/ajax_stock_name', methods=['POST'])
 def ajax_stock_name():
@@ -260,6 +330,6 @@ if __name__ == '__main__':
             twse_index.process(datadate, '0')
             tpex_index.process(datadate, '0')
     else:
-        # app.debug = True
+        app.debug = True
         app.run()
 
