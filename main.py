@@ -237,27 +237,6 @@ def ajax_get_correl():
     #  利用request取得使用者端傳來的方法為何
     if request.method == 'POST':
         json_object = request.json
-        # print(json.loads(json_object))
-
-        # sid = request.values['sid']
-        # query = "SELECT name from stock where sid = %s"
-        #
-        # # check latest data in DB
-        # data = SQL.Query_command(query, sid)
-        # name = ''
-        # if len(data) == 0:
-        #     name = '無此股票'
-        # else:
-        #     name = data[0][0]
-
-        np.random.seed(100)
-        # create array of 50 random integers between 0 and 10
-        var1 = np.random.randint(0, 10, 50)
-        print(var1)
-        # create a positively correlated array with some random noise
-        var2 = var1 + np.random.normal(0, 10, 50)
-        # calculate the correlation between the two arrays
-        # print(np.corrcoef(var1, var2))
 
         df = pd.DataFrame(json_object)
         # df = df[['date', 'twse', 'tpex', 'closeA', 'volA', 'twseA', 'closeB', 'volB', 'twseB', 'diff']]
