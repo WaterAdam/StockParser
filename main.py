@@ -10,6 +10,7 @@ import sys
 from flask import Flask, request, render_template
 import json
 import numpy as np
+from pymysql.converters import escape_string
 
 order_list = ["ForeignTradePercent", "InvTradePercent", "ForeignInvVol", "InvVol"]
 
@@ -277,6 +278,104 @@ def ajax_get_correl():
         'c_closeA_closeB': c_closeA_closeB,
         'c_volA_closeB': c_volA_closeB,
     }
+
+@app.route('/obos_rank', methods=['GET', 'POST'])
+def obos_rank():
+    return render_template('obos_rank.html')
+
+# 配對交易
+@app.route('/ajax_obos_rank', methods=['POST'])
+def ajax_obos_rank():
+    #  利用request取得使用者端傳來的方法為何
+    if request.method == 'POST':
+        # get date list within 60 days
+        # get date sql
+        date_query = "select distinct date from stock_daily_info ORDER by date desc limit 60"
+        # run command
+        date_command = SQL.Query_command(date_query)
+        # get simple sql data list
+        arr_list = pd.DataFrame(date_command, columns=['date']).values.tolist()
+        date1 = arr_list[0][0].strftime("%Y-%m-%d")
+        date3 = arr_list[2][0].strftime("%Y-%m-%d")
+        date5 = arr_list[4][0].strftime("%Y-%m-%d")
+        date10 = arr_list[9][0].strftime("%Y-%m-%d")
+        date20 = arr_list[19][0].strftime("%Y-%m-%d")
+        date60 = arr_list[59][0].strftime("%Y-%m-%d")
+
+        inv = request.values['inv'] # 1 for inv, 2 for finv
+        column = request.values['order[0][column]']
+        dir = request.values['order[0][dir]']
+
+        order_col_index = column if column else 0
+        order_col_dir = dir if dir else 'desc'
+        order_col = ['stock.sid', 'stock.name', 'd1.invp', 'd1.avgprice', 'd3.invp', 'd3.avgprice', 'd5.invp',
+                     'd5.avgprice', 'd10.invp', 'd10.avgprice', 'd20.invp', 'd20.avgprice', 'd60.invp',
+                     'd60.avgprice', 'industry.name']
+
+        # get obos data
+        if inv == '1':
+            query = "select stock.sid as sid, stock.name as stock_name, d1.invp as d1_invp, d1.avgprice as d1_avgprice, d3.invp as d3_invp, d3.avgprice as d3_avgprice, d5.invp as d3_invp, d5.avgprice as d3_avgprice, d10.invp as d3_invp, d10.avgprice as d3_avgprice, d20.invp as d3_invp, d20.avgprice as d3_avgprice, d60.invp as d3_invp, d60.avgprice as d3_avgprice, industry.name as industry_name " \
+                    "from stock " \
+                    "inner join industry on industry.id = stock.industry " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d1 on d1.sid = stock.sid " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d3 on d3.sid = stock.sid " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d5 on d5.sid = stock.sid " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d10 on d10.sid = stock.sid " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d20 on d20.sid = stock.sid " \
+                    "inner join (select sid, SUM(InvTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d60 on d60.sid = stock.sid " \
+                    "ORDER by " + order_col[int(order_col_index)] + " " + order_col_dir + " limit 20"
+        else:
+            query = "select stock.sid as sid, stock.name as stock_name, d1.invp as d1_invp, d1.avgprice as d1_avgprice, d3.invp as d3_invp, d3.avgprice as d3_avgprice, d5.invp as d3_invp, d5.avgprice as d3_avgprice, d10.invp as d3_invp, d10.avgprice as d3_avgprice, d20.invp as d3_invp, d20.avgprice as d3_avgprice, d60.invp as d3_invp, d60.avgprice as d3_avgprice, industry.name as industry_name " \
+                    "from stock " \
+                    "inner join industry on industry.id = stock.industry " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d1 on d1.sid = stock.sid " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d3 on d3.sid = stock.sid " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d5 on d5.sid = stock.sid " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d10 on d10.sid = stock.sid " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d20 on d20.sid = stock.sid " \
+                    "inner join (select sid, SUM(ForeignTradePercent) as invp, AVG(AvgPrice) as avgprice " \
+                    "from stock_daily_info " \
+                    "where date >= %s " \
+                    "GROUP by sid) as d60 on d60.sid = stock.sid " \
+                    "ORDER by " + order_col[int(order_col_index)] + " " + order_col_dir + " limit 20"
+        # run command
+        command = SQL.Query_command(query, [date1, date3, date5, date10, date20, date60])
+        # get simple sql data list
+        data = pd.DataFrame(command).values.tolist()
+    return {'data': data}
 
 # 使用sid取得stock name
 @app.route('/ajax_stock_name', methods=['POST'])

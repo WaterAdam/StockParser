@@ -22,6 +22,7 @@ def Query_command(command, params = None):
                 cursor.execute(command)
             else:
                 cursor.execute(command, (params))
+            # print(cursor._last_executed) # show raw sql to debug
             # 取得所有資料
             result = cursor.fetchall()
             cursor.close()
