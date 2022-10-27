@@ -10,7 +10,6 @@ import sys
 from flask import Flask, request, render_template
 import json
 import numpy as np
-from pymysql.converters import escape_string
 
 order_list = ["ForeignTradePercent", "InvTradePercent", "ForeignInvVol", "InvVol"]
 
